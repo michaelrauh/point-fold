@@ -58,6 +58,63 @@
   (for/fold ([acc (make-tree)]) ([p (corpus-to-sentences corpus)])
     (add-phrase-to-tree p acc)))
 
+(define (prune-by-depth tree depth)
+  1)
+
+(define (walk-down tree name)
+  1)
+
+(define (get-children tree)
+  1)
+
+(define (prune-to-depth-by-span tree depth span)
+  1)
+
+(define (unravel major-axis-root origin major-axis-length)
+  1)
+
+(define (fill-pane potential-top-row potential-left-column major-axis-root minor-axis-root)
+  ; this will return #f most of the time, as it will assert columns exist every time it adds a new word, top to bottom left to right with the frame filled
+  ; it also has to check the diagonal rule
+  1)
+
+(define (build-result full-tree tree-cursor dims cursor result)
+  ; design idea - only worry about one axis at a time. Build up with the concept of perpindicularity.
+  ; more granularly, eat the dims by decrementing the first dim to zero, and then swallow it and go to the next one
+  ; even pruning can be more incremental
+  ; there has to be a concept of the current coordinate that is being filled in
+  ; the tree cursor is a pre-pruned tree. You never have to go back up recursively, just push down and sometimes fail
+
+  (if (cursor-out-of-bounds? dims cursor)
+      result
+      (begin
+        (define pruned (prune-tree tree-cursor dims cursor))
+        (define possibilities (enumerate-possibilities pruned cursor))
+        (define good-guesses (filter guess-works possibilities))
+        (if (not (empty? good-guesses))
+            (begin
+            (define new-result (map insert-result good-guesses))
+            (build-result full-tree pruned dims (increment cursor) new-result))
+            (dead-end)))))
+
+(struct ortho (origin axes tree))
+          
+
+
+; idea - can this be a list eater on dims? Perhaps a tail call passing intermediates and pruned trees would help
+(define (search tree dims)
+  (define dimensionality (length dims))
+  (define major-axis-length (car dims))
+  (define minor-axis-length (cadr dims))
+  (define major-axis-root (prune-by-depth (prune-to-depth-by-span tree (sub1 major-axis-length) dimensionality) major-axis-length))
+  (define minor-axis-root (prune-by-depth (prune-to-depth-by-span tree (sub1 minor-axis-length) dimensionality) minor-axis-length))
+  (define origins (get-children major-axis-root))
+
+
+  (for/or ([origin origins])
+        (build-result tree (walk-down major-axis-root origin) (walk-down minor-axis-root origin) dims)))
+  
+
 (add-phrase (list "a" "b" "c" "d") (make-tree))
 (add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
 (add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
