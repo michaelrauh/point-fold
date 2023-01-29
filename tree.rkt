@@ -1,5 +1,6 @@
 #lang racket
 
+(require threading)
 (struct node (name children span depth) #:transparent)
 
 (define (make-tree)
@@ -69,7 +70,7 @@
 (define (dims->paths dims)
   1)
 
-(define (dims->diagonals dims)
+(define (dims->diagonals dims) ; when making diagonals, delete lookaheads
   1)
 
 (define (transpose xss)
@@ -81,13 +82,12 @@
   (fold template tree))
 
 ; folds according to template while searching tree. Returns either a list of names or #f
-; rework this - call advance with tree, template, and empty results and it will return either one result or false
 (define (fold template tree)
   (advance tree template null))
 
 ; may return false
 ; otherwise returns the whole node
-(define (subtree-at-path path)
+(define (subtree-at-path tree path)
   1)
 
 (define (span-prune tree span)
@@ -96,7 +96,7 @@
 (define (tree-overpruned? tree)
   1)
 
-(define (depth-prune tree)
+(define (depth-prune tree depth)
   1)
 
 (define (find-overlaps tree other)
@@ -105,25 +105,43 @@
 (define (children tree)
   1)
 
-; resolve links in the rules
-; get in to the tree at paths, prune, and return candidate words for next step in the results
-(define (run-rules tree rules)
+(define (child-intersect l)
   1)
 
-; (struct rules (span depth paths diagonal))
-; if the result is done, return it
-; if the search space is empty, return false
-; if there is an available place to put the next result, recurse on all possible results with that next slot filled in
-; once the recurse comes back up, filter falses and if it is empty, return false for the whole batch. If there are multiple that come back and are done, return the first one
+(define (diagonal-prune tree diagonal)
+  1)
 
-; search space is a matter of looking at the rules and running them
+; resolve links in the rules
+; get in to the tree at paths, prune, and return candidate words for next step in the results. This may be empty
+(define (run-rules tree results current-rule)
+  (define concrete-rules (resolve-links current-rule))
+  (~>
+   (rules-paths concrete-rules)
+   (map (λ (p) (subtree-at-path tree p)) _)
+   (map (λ (t) (span-prune t (rules-span concrete-rules))) _)
+   (map (λ (t) (depth-prune t (rules-depth concrete-rules))) _)
+   (map (λ (t) (diagonal-prune t (rules-diagonal concrete-rules))) _)
+   (child-intersect _)))
+
+(define (walk-tree tree path)
+  1)
+
+  ; (struct rules (span depth paths diagonal))
+(define (resolve-links current-rule results)
+  (define active-paths (map.map (λ (x) (list-ref results x)) (rules-paths current-rule)))
+  (define active-diagonals (map (λ (x) (list-ref results x)) (rules-diagonal current-rule)))
+  (rules (rules-span current-rule) (rules-depth current-rule) active-paths active-diagonals))
+
+(define (map.map l pred)
+  (map (λ (l) (map (λ (x) (pred x)))) l))
+
 (define (advance tree template results)
   (if (eq? (length template) (length results))
       results
-      (let ([valid-words-to-fill-in (run-rules tree (list-ref template (length results)))])
+      (let ([valid-words-to-fill-in (run-rules tree results (list-ref template (length results)))])
         (if (empty? valid-words-to-fill-in)
             #f
-            (let ([rec-res (map (λ (new-word) (advance tree template (append results (list new-word)))))])
+            (let ([rec-res (map (λ (new-word) (advance tree template (append results (list new-word)))) valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)])
                 (if (empty? ress)
                     #f
