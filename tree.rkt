@@ -48,77 +48,73 @@
 (define (suffixes l)
   (if (= 1 (length l)) (list l) (cons l (suffixes (cdr l)))))
 
-(define (corpus-to-sentence-strings corpus)
+(define (corpus->sentence-strings corpus)
   (remove-duplicates (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?\\;\\:")))))
 
-(define (corpus-to-sentences corpus)
-  (filter cons? (map string-split (corpus-to-sentence-strings corpus))))
+(define (corpus->sentences corpus)
+  (filter cons? (map string-split (corpus->sentence-strings corpus))))
 
-(define (corpus-to-tree corpus)
-  (for/fold ([acc (make-tree)]) ([p (corpus-to-sentences corpus)])
+(define (corpus->tree corpus)
+  (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
     (add-phrase-to-tree p acc)))
 
-(define (prune-by-depth tree depth)
+(struct rules (span depth paths diagonal))
+
+(define (dims->spans dims)
   1)
 
-(define (walk-down tree name)
+(define (dims->depths dims)
   1)
 
-(define (get-children tree)
+(define (dims->paths dims)
   1)
 
-(define (prune-to-depth-by-span tree depth span)
+(define (dims->diagonals dims)
   1)
 
-(define (unravel major-axis-root origin major-axis-length)
+(define (transpose xss)
+  (apply map list xss))
+
+(define (search corpus dims)
+  (define template (dims->template dims))
+  (define tree (corpus->tree corpus))
+  (fold template tree))
+
+(define (children tree)
   1)
 
-(define (fill-pane potential-top-row potential-left-column major-axis-root minor-axis-root)
-  ; this will return #f most of the time, as it will assert columns exist every time it adds a new word, top to bottom left to right with the frame filled
-  ; it also has to check the diagonal rule
+; folds according to template while searching tree. Returns either a vector of names or #f
+(define (fold template tree)
+  (define results (list))
+  (define current-path null)
+  (define (go template tree results current-path)
+    (if (eq? (length results) (length template))
+      results
+      (let-values ([(next-result current-path) (advance tree template current-path results)])
+      (if (false? next-result)
+          #f
+          (go template tree results)))))
+  (go template tree results current-path))
+  
+
+; if results are false, start a new path
+; if results are false and the path is terminal, return false as the next result and null for current path
+; otherwise, fill in the next result and pass it back up
+; returns next result and new current path
+(define (advance tree template results current-path)
   1)
-
-(define (build-result full-tree tree-cursor dims cursor result)
-  ; design idea - only worry about one axis at a time. Build up with the concept of perpindicularity.
-  ; more granularly, eat the dims by decrementing the first dim to zero, and then swallow it and go to the next one
-  ; even pruning can be more incremental
-  ; there has to be a concept of the current coordinate that is being filled in
-  ; the tree cursor is a pre-pruned tree. You never have to go back up recursively, just push down and sometimes fail
-
-  (if (cursor-out-of-bounds? dims cursor)
-      result
-      (begin
-        (define pruned (prune-tree tree-cursor dims cursor))
-        (define possibilities (enumerate-possibilities pruned cursor))
-        (define good-guesses (filter guess-works possibilities))
-        (if (not (empty? good-guesses))
-            (begin
-            (define new-result (map insert-result good-guesses))
-            (build-result full-tree pruned dims (increment cursor) new-result))
-            (dead-end)))))
-
-(struct ortho (origin axes tree))
-          
-
-
-; idea - can this be a list eater on dims? Perhaps a tail call passing intermediates and pruned trees would help
-(define (search tree dims)
-  (define dimensionality (length dims))
-  (define major-axis-length (car dims))
-  (define minor-axis-length (cadr dims))
-  (define major-axis-root (prune-by-depth (prune-to-depth-by-span tree (sub1 major-axis-length) dimensionality) major-axis-length))
-  (define minor-axis-root (prune-by-depth (prune-to-depth-by-span tree (sub1 minor-axis-length) dimensionality) minor-axis-length))
-  (define origins (get-children major-axis-root))
-
-
-  (for/or ([origin origins])
-        (build-result tree (walk-down major-axis-root origin) (walk-down minor-axis-root origin) dims)))
+        
+; produce a list of rules. Each rule applies to the corresponding location in a result vector. Results only contain names.
+; a rule governs what can go in the corresponding location by referencing earlier locations in the vector
+; the above helpers will end up zipped together to produce the full template
+(define (dims->template dims) 
+  1)
   
 
 (add-phrase (list "a" "b" "c" "d") (make-tree))
 (add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
 (add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
-(corpus-to-tree "a b. c d! e f? g h a c b d")
+(corpus->tree "a b. c d! e f? g h a c b d")
 (module+ test
   (require rackunit)
   (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
