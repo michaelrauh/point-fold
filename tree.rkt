@@ -80,36 +80,61 @@
   (define tree (corpus->tree corpus))
   (fold template tree))
 
+; folds according to template while searching tree. Returns either a list of names or #f
+; rework this - call advance with tree, template, and empty results and it will return either one result or false
+(define (fold template tree)
+  (advance tree template null))
+
+; may return false
+; otherwise returns the whole node
+(define (subtree-at-path path)
+  1)
+
+(define (span-prune tree span)
+  1)
+
+(define (tree-overpruned? tree)
+  1)
+
+(define (depth-prune tree)
+  1)
+
+(define (find-overlaps tree other)
+  1)
+
 (define (children tree)
   1)
 
-; folds according to template while searching tree. Returns either a vector of names or #f
-(define (fold template tree)
-  (define results (list))
-  (define current-path null)
-  (define (go template tree results current-path)
-    (if (eq? (length results) (length template))
-      results
-      (let-values ([(next-result current-path) (advance tree template current-path results)])
-      (if (false? next-result)
-          #f
-          (go template tree results)))))
-  (go template tree results current-path))
-  
-
-; if results are false, start a new path
-; if results are false and the path is terminal, return false as the next result and null for current path
-; otherwise, fill in the next result and pass it back up
-; returns next result and new current path
-(define (advance tree template results current-path)
+; resolve links in the rules
+; get in to the tree at paths, prune, and return candidate words for next step in the results
+(define (run-rules tree rules)
   1)
-        
+
+; (struct rules (span depth paths diagonal))
+; if the result is done, return it
+; if the search space is empty, return false
+; if there is an available place to put the next result, recurse on all possible results with that next slot filled in
+; once the recurse comes back up, filter falses and if it is empty, return false for the whole batch. If there are multiple that come back and are done, return the first one
+
+; search space is a matter of looking at the rules and running them
+(define (advance tree template results)
+  (if (eq? (length template) (length results))
+      results
+      (let ([valid-words-to-fill-in (run-rules tree (list-ref template (length results)))])
+        (if (empty? valid-words-to-fill-in)
+            #f
+            (let ([rec-res (map (λ (new-word) (advance tree template (append results (list new-word)))))])
+              (let ([ress (filter identity rec-res)])
+                (if (empty? ress)
+                    #f
+                    (car ress))))))))
+                        
+                  
 ; produce a list of rules. Each rule applies to the corresponding location in a result vector. Results only contain names.
 ; a rule governs what can go in the corresponding location by referencing earlier locations in the vector
 ; the above helpers will end up zipped together to produce the full template
 (define (dims->template dims) 
   1)
-  
 
 (add-phrase (list "a" "b" "c" "d") (make-tree))
 (add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
