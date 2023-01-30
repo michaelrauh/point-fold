@@ -1,7 +1,8 @@
 #lang racket
 
 (require threading)
-(struct node (name children span depth) #:transparent)
+(require math/array)
+(struct node (name children span depth) #:transparent) ; transparent will make this slow
 
 (define (make-tree)
   (make-leaf 'root))
@@ -50,7 +51,8 @@
   (if (= 1 (length l)) (list l) (cons l (suffixes (cdr l)))))
 
 (define (corpus->sentence-strings corpus)
-  (remove-duplicates (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?\\;\\:")))))
+  (remove-duplicates
+   (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?\\;\\:")))))
 
 (define (corpus->sentences corpus)
   (filter cons? (map string-split (corpus->sentence-strings corpus))))
@@ -59,22 +61,7 @@
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
     (add-phrase-to-tree p acc)))
 
-(struct rules (span depth paths diagonal))
-
-(define (dims->spans dims)
-  1)
-
-(define (dims->depths dims)
-  1)
-
-(define (dims->paths dims)
-  1)
-
-(define (dims->diagonals dims) ; when making diagonals, delete lookaheads
-  1)
-
-(define (transpose xss)
-  (apply map list xss))
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define (search corpus dims)
   (define template (dims->template dims))
@@ -93,16 +80,7 @@
 (define (span-prune tree span)
   1)
 
-(define (tree-overpruned? tree)
-  1)
-
 (define (depth-prune tree depth)
-  1)
-
-(define (find-overlaps tree other)
-  1)
-
-(define (children tree)
   1)
 
 (define (child-intersect l)
@@ -115,18 +93,16 @@
 ; get in to the tree at paths, prune, and return candidate words for next step in the results. This may be empty
 (define (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule))
-  (~>
-   (rules-paths concrete-rules)
-   (map (λ (p) (subtree-at-path tree p)) _)
-   (map (λ (t) (span-prune t (rules-span concrete-rules))) _)
-   (map (λ (t) (depth-prune t (rules-depth concrete-rules))) _)
-   (map (λ (t) (diagonal-prune t (rules-diagonal concrete-rules))) _)
-   (child-intersect _)))
+  (define paths (rules-paths concrete-rules))
+  (define subtrees (map (λ (p) (subtree-at-path tree p)) paths))
+  (if (member #f subtrees)
+      null
+      (~> subtrees
+          (map (λ (t) (span-prune t (rules-span concrete-rules))) _)
+          (map (λ (t) (depth-prune t (rules-depth concrete-rules))) _)
+          (map (λ (t) (diagonal-prune t (rules-diagonal concrete-rules))) _)
+          (child-intersect _))))
 
-(define (walk-tree tree path)
-  1)
-
-  ; (struct rules (span depth paths diagonal))
 (define (resolve-links current-rule results)
   (define active-paths (map.map (λ (x) (list-ref results x)) (rules-paths current-rule)))
   (define active-diagonals (map (λ (x) (list-ref results x)) (rules-diagonal current-rule)))
@@ -141,18 +117,38 @@
       (let ([valid-words-to-fill-in (run-rules tree results (list-ref template (length results)))])
         (if (empty? valid-words-to-fill-in)
             #f
-            (let ([rec-res (map (λ (new-word) (advance tree template (append results (list new-word)))) valid-words-to-fill-in)])
-              (let ([ress (filter identity rec-res)])
-                (if (empty? ress)
-                    #f
-                    (car ress))))))))
-                        
-                  
-; produce a list of rules. Each rule applies to the corresponding location in a result vector. Results only contain names.
-; a rule governs what can go in the corresponding location by referencing earlier locations in the vector
-; the above helpers will end up zipped together to produce the full template
-(define (dims->template dims) 
+            (let ([rec-res (map (λ (new-word)
+                                  (advance tree template (append results (list new-word))))
+                                valid-words-to-fill-in)])
+              (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
+
+
+(struct rules (span depth paths diagonal))
+
+(define (dims->template dims)
+  (define spans (dims->spans dims))
+  (define depths (dims->depths dims))
+  (define paths (dims->paths dims))
+  (define diagonals (dims->diagonals dims))
+  (transpose (list spans depths paths diagonals)))
+
+(define (make-example dims)
+  1) ; use indexes-array
+
+(define (dims->spans dims)
   1)
+
+(define (dims->depths dims)
+  1)
+
+(define (dims->paths dims)
+  1)
+
+(define (dims->diagonals dims) ; when making diagonals, delete lookaheads and self references
+  1)
+
+(define (transpose xss)
+  (apply map list xss))
 
 (add-phrase (list "a" "b" "c" "d") (make-tree))
 (add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
