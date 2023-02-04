@@ -150,6 +150,18 @@
 (define (transpose xss)
   (apply map list xss))
 
+; credit to Daniel Moore
+(require math)
+(define (generalized_cantor_polynomial indices)
+  (sum (map (λ (index_idx)
+              (binomial (+ index_idx
+                           (sum (map (λ (index_idx2) (list-ref indices index_idx2))
+                                     (range (add1 index_idx)))))
+                        (add1 index_idx)))
+            (range (length indices)))))
+
+(generalized_cantor_polynomial (list 1 1 55 0 1))
+
 (add-phrase (list "a" "b" "c" "d") (make-tree))
 (add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
 (add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
