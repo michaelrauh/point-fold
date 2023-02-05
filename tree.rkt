@@ -138,7 +138,7 @@
   1) ; use indexes-array
 
 (define (dims->spans dims)
-  1)
+  (pack-arr (dims->span-arr dims)))
 
 (define (dims->depths dims)
   1)
@@ -194,6 +194,14 @@
   (for/list ([i pos-order])
     (array-ref arr i)))
 
+(define (point-span index dims)
+  (define is (vector->list index))
+  (sum (map (λ (i j) (if (eq? i (sub1 j)) 0 1)) is dims)))
+
+(define (dims->span-arr dims)
+  (define arr (dims->index-arr dims))
+  (array-map (λ (i) (point-span i dims)) arr))
+
 (module+ test
   (require rackunit)
   (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
@@ -227,5 +235,9 @@
     #(1 2 2)
     #(2 2 2)))
   (check-equal? (pack-arr (array #[#[0 1 2] #[3 4 5]]))
-                '(0 3 1 4 2 5)))
+                '(0 3 1 4 2 5))
+  (check-equal? (dims->span-arr '(3 3 3))
+                (array #[#[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[2 2 1] #[2 2 1] #[1 1 0]]]))
+  (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0)))
+                
                           
