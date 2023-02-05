@@ -68,7 +68,9 @@
 (define (search corpus dims)
   (define template (dims->template dims))
   (define tree (corpus->tree corpus))
+  ; add unpack step to put it into an array
   (fold template tree))
+
 
 ; folds according to template while searching tree. Returns either a list of names or #f
 (define (fold template tree)
@@ -80,19 +82,20 @@
   1)
 
 (define (span-prune tree span)
+  ; remove any nodes at the top level with too low of a span
   1)
 
 (define (depth-prune tree depth)
+  ; remove any nodes at the top level with too low of a depth
   1)
 
-(define (child-intersect l)
+(define (child-intersect trees)
+  ; find the intersect of the children of the trees
   1)
 
 (define (diagonal-prune tree diagonal)
   1)
 
-; resolve links in the rules
-; get in to the tree at paths, prune, and return candidate words for next step in the results. This may be empty
 (define (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule))
   (define paths (rules-paths concrete-rules))
