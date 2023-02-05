@@ -174,10 +174,25 @@
     [else (vec< (cdr l1) (cdr l2))]))
 
 (define (make-unravel-corr dims)
-  (define arr (indexes-array (list->vector dims)))
-  
+  (define arr (dims->index-arr dims))
+  (define pos-order (sort (array->list arr) sum-then-each<))
+  (define flatten-hash (make-hash (map cons pos-order (range (length pos-order)))))
+  flatten-hash)
 
+(define (get-pos-order dims)
+  (define arr (dims->index-arr dims))
+  (define pos-order (sort (array->list arr) sum-then-each<))
+  pos-order)
 
+(define (dims->index-arr dims)
+  (indexes-array (list->vector dims)))
+
+(define (pack-arr arr)
+  (define dims (vector->list (array-shape arr)))
+  (define unravel-corr (make-unravel-corr dims))
+  (define pos-order (get-pos-order dims))
+  (for/list ([i pos-order])
+    (array-ref arr i)))
 
 (module+ test
   (require rackunit)
@@ -210,4 +225,7 @@
     #(2 2 1)
     #(2 1 2)
     #(1 2 2)
-    #(2 2 2))))
+    #(2 2 2)))
+  (check-equal? (pack-arr (array #[#[0 1 2] #[3 4 5]]))
+                '(0 3 1 4 2 5)))
+                          
