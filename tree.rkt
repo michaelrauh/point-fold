@@ -134,20 +134,37 @@
   (define diagonals (dims->diagonals dims))
   (transpose (list spans depths paths diagonals)))
 
-(define (make-example dims)
-  1) ; use indexes-array
-
 (define (dims->spans dims)
   (pack-arr (dims->span-arr dims)))
 
 (define (dims->depths dims)
+  ; make an index array
+  ; map over the array and compare each index to dims
+  ; subtract from the max it could be (beware off by one)
+  ; take the max
+  ; pack the answer array into a flat list
   1)
 
 (define (dims->paths dims)
+  ; make an index array
+  ; map over the index array and for each index, make a range along each axis to the current location. Have a list of list in each cell
+  ; map over the index array and convert each index into its packed order index
+  ; pack the array into a flat list
+  ; check to make sure this produces something that is always backward looking. It should be if the packing logic is good
   1)
 
 (define (dims->diagonals dims)
+  ; make an index array
+  ; map over the index array and for each index sum them up
+  ; find the indices that have matching answers for the above
+  ; make an array with those indices that refer to other parts in the array
+  ; filter out self-references
+  ; map the array into its packed order indices
+  ; pack the array into a list
+  ; check to make sure this is always backward looking
   1)
+
+; todo call top level search which exists already
 
 (define (transpose xss)
   (apply map list xss))
