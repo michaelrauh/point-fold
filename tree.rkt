@@ -2,6 +2,8 @@
 
 (require threading)
 (require math/array)
+(require math)
+(require racket/vector)
 (struct node (name children span depth) #:transparent) ; transparent will make this slow
 
 (define (make-tree)
@@ -144,30 +146,65 @@
 (define (dims->paths dims)
   1)
 
-(define (dims->diagonals dims) ; when making diagonals, delete lookaheads and self references
+(define (dims->diagonals dims)
   1)
 
 (define (transpose xss)
   (apply map list xss))
 
-; credit to Daniel Moore
-(require math)
-(define (generalized_cantor_polynomial indices)
-  (sum (map (λ (index_idx)
-              (binomial (+ index_idx
-                           (sum (map (λ (index_idx2) (list-ref indices index_idx2))
-                                     (range (add1 index_idx)))))
-                        (add1 index_idx)))
-            (range (length indices)))))
+; todo make tests with these as setups to drive out accesors to trees. If the trees are not well formed the accessors will fail
 
-(generalized_cantor_polynomial (list 1 1 55 0 1))
+;(add-phrase (list "a" "b" "c" "d") (make-tree))
+;(add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
+;(add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
+;(corpus->tree "a b. c d! e f? g h a c b d")
 
-(add-phrase (list "a" "b" "c" "d") (make-tree))
-(add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
-(add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
-(corpus->tree "a b. c d! e f? g h a c b d")
+(define (sum-then-each< vec1 vec2)
+  (define l1 (vector->list vec1))
+  (define l2 (vector->list vec2))
+  (cond
+    [(< (sum l1) (sum l2)) #t]
+    [(< (sum l2) (sum l1)) #f]
+    [else (vec< l1 l2)]))
+
+(define (vec< l1 l2)
+  (cond
+    [(< (car l1) (car l2)) #t]
+    [(< (car l2) (car l1)) #f]
+    [else (vec< (cdr l1) (cdr l2))]))
+
+
+
 (module+ test
   (require rackunit)
   (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
   (check-false (name-exists? (node-children (add-phrase (list "example") (make-tree))) "not example"))
-  (check-equal? (suffixes (list 1 2 3)) '((1 2 3) (2 3) (3))))
+  (check-equal? (suffixes (list 1 2 3)) '((1 2 3) (2 3) (3)))
+  (check-equal? '(#(0 0 0)
+  #(0 0 1)
+  #(0 1 0)
+  #(1 0 0)
+  #(0 0 2)
+  #(0 1 1)
+  #(0 2 0)
+  #(1 0 1)
+  #(1 1 0)
+  #(2 0 0)
+  #(0 1 2)
+  #(0 2 1)
+  #(1 0 2)
+  #(1 1 1)
+  #(1 2 0)
+  #(2 0 1)
+  #(2 1 0)
+  #(0 2 2)
+  #(1 1 2)
+  #(1 2 1)
+  #(2 0 2)
+  #(2 1 1)
+  #(2 2 0)
+  #(1 2 2)
+  #(2 1 2)
+  #(2 2 1)
+  #(2 2 2))
+                (sort (array->list (indexes-array #(3 3 3))) sum-then-each<)))
