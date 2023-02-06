@@ -140,13 +140,13 @@
 (define (dims->spans dims)
   (pack-arr (dims->span-arr dims)))
 
+(define (subtract-each index dims)
+  (apply max (map (λ (i x) (- (sub1 x) i)) index dims)))
+
 (define (dims->depths dims)
-  ; make an index array
-  ; map over the array and compare each index to dims
-  ; subtract from the max it could be (beware off by one)
-  ; take the max
-  ; pack the answer array into a flat list
-  1)
+  (define indices (dims->index-arr dims))
+  (define depths (array-map (λ (is) (subtract-each (vector->list is) dims)) indices))
+  (pack-arr depths))
 
 (define (dims->paths dims)
   ; make an index array
@@ -231,6 +231,8 @@
                 '(0 3 1 4 2 5))
   (check-equal? (dims->span-arr '(3 3 3))
                 (array #[#[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[2 2 1] #[2 2 1] #[1 1 0]]]))
-  (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0)))
+  (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0))
+  (check-equal? (dims->depths '(3 3 3 ))
+'(2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 0)))
                 
                           
