@@ -87,7 +87,7 @@
 
 (define (diagonal-prune tree diagonal)
   (node (node-name tree)
-        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set (node-children tree)))))) (node-children tree))
+        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set n))))) (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
