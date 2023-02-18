@@ -4,101 +4,7 @@
 (require math/array)
 (require math)
 (require racket/vector)
-(struct node (name children span depth) #:transparent)
-
-(define (make-tree)
-  (make-leaf 'root))
-
-(define (make-leaf name)
-  (node name (set) 0 0))
-
-(define (add-phrase phrase tree)
-  (if (empty? phrase)
-      tree
-      (let ([word-to-add (car phrase)])
-        (if (name-exists? (node-children tree) word-to-add)
-            (let ([updated-children (set-add (remove-by-name (node-children tree) word-to-add)
-                                             (add-phrase (cdr phrase)
-                                                         (select-node-by-name (node-children tree)
-                                                                              word-to-add)))])
-              (node (node-name tree)
-                    updated-children
-                    (node-span tree)
-                    (add1 (get-max-depth updated-children))))
-            (let ([updated-children (set-add (node-children tree)
-                                             (add-phrase (cdr phrase) (make-leaf word-to-add)))])
-              (node (node-name tree)
-                    updated-children
-                    (add1 (node-span tree))
-                    (add1 (get-max-depth updated-children))))))))
-
-(define (get-max-depth nodes)
-  (apply max (set-map nodes (λ (n) (node-depth n)))))
-
-(define (name-exists? nodes name)
-  (not (false? (select-node-by-name nodes name))))
-
-(define (remove-by-name nodes name)
-  (for/set ([n (set->stream nodes)] #:when (not (eq? (node-name n) name))) n))
-
-(define (select-node-by-name nodes name)
-  (for/first ([n (set->stream nodes)] #:when (eq? (node-name n) name))
-    n))
-
-(define (add-phrase-to-tree phrase tree)
-  (for/fold ([acc tree]) ([p (suffixes phrase)])
-    (add-phrase p acc)))
-
-(define (suffixes l)
-  (if (= 1 (length l)) (list l) (cons l (suffixes (cdr l)))))
-
-(define (corpus->sentence-strings corpus)
-  (remove-duplicates
-   (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?\\;\\:")))))
-
-(define (corpus->sentences corpus)
-  (filter cons? (map string-split (corpus->sentence-strings corpus))))
-
-(define (corpus->tree corpus)
-  (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
-    (add-phrase-to-tree p acc)))
-
-(define (subtree-at-path tree path)
-  (cond
-    [[empty? path] tree]
-    [[not (member (car path) (children-names tree))] #f]
-    [subtree-at-path
-     (node-at-name tree (car path))
-     (cdr path)]))
-
-(define (node-at-name tree name)
-  (for/first ([c (node-children tree)] #:when (eq? name (node-name c)))
-    c))
-
-(define (span-prune tree span)
-  (node (node-name tree)
-        (filter (λ (n) (> span (node-span n))) (node-children tree))
-        (node-span tree)
-        (node-depth tree)))
-
-(define (depth-prune tree depth)
-  (node (node-name tree)
-        (filter (λ (n) (> depth (node-depth n))) (node-children tree))
-        (node-span tree)
-        (node-depth tree)))
-
-(define (diagonal-prune tree diagonal)
-  (node (node-name tree)
-        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set n)))))
-                (node-children tree))
-        (node-span tree)
-        (node-depth tree)))
-
-(define (children-names tree)
-  (map node-name (node-children tree)))
-
-(define (child-intersect trees)
-  (set->list (set-intersect (map children-names trees))))
+(require "tree-maker.rkt")
 
 (define (search corpus dims)
   (define template (dims->template dims))
@@ -239,16 +145,3 @@
 
 (define (dims->diagonals dims)
   (pack-arr (translate-arr (make-diagonals dims))))
-
-(module+ test
-  (require rackunit)
-  (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
-  (check-false (name-exists? (node-children (add-phrase (list "example") (make-tree))) "not example"))
-  (check-equal? (suffixes (list 1 2 3)) '((1 2 3) (2 3) (3)))
-  (check-equal? (pack-arr (array #[#[0 1 2] #[3 4 5]])) '(0 3 1 4 2 5))
-  (check-equal? (dims->span-arr '(3 3 3))
-                (array #[#[#[3 3 2] #[3 3 2] #[2 2 1]]
-                         #[#[3 3 2] #[3 3 2] #[2 2 1]]
-                         #[#[2 2 1] #[2 2 1] #[1 1 0]]]))
-  (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0))
-  (check-equal? (dims->depths '(3 3 3)) '(2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 0)))
