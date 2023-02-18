@@ -4,7 +4,7 @@
 (require math/array)
 (require math)
 (require racket/vector)
-(struct node (name children span depth) #:transparent) ; transparent will make this slow
+(struct node (name children span depth) #:transparent)
 
 (define (make-tree)
   (make-leaf 'root))
@@ -63,38 +63,49 @@
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
     (add-phrase-to-tree p acc)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (subtree-at-path tree path)
+  (cond ([empty? path] tree)
+        ([not (member (car path) (children-names tree))] #f)
+        (subtree-at-path (node-at-name tree (car path)) (cdr path))))
+
+(define (node-at-name tree name)
+  (for/first ([c (node-children tree)]
+              #:when (eq? name (node-name c)))
+    c))
+
+(define (span-prune tree span)
+  (node (node-name tree)
+        (filter (λ (n) (> span (node-span n))) (node-children tree))
+        (node-span tree)
+        (node-depth tree)))
+
+(define (depth-prune tree depth)
+  (node (node-name tree)
+        (filter (λ (n) (> depth (node-depth n))) (node-children tree))
+        (node-span tree)
+        (node-depth tree)))
+
+(define (diagonal-prune tree diagonal)
+  (node (node-name tree)
+        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set (node-children tree)))))) (node-children tree))
+        (node-span tree)
+        (node-depth tree)))
+
+(define (children-names tree)
+  (map node-name (node-children tree)))
+  
+(define (child-intersect trees)
+  (set->list (set-intersect (map children-names trees))))
 
 (define (search corpus dims)
   (define template (dims->template dims))
   (define tree (corpus->tree corpus))
-  ; add unpack step to put it into an array
   (fold template tree))
 
-
-; folds according to template while searching tree. Returns either a list of names or #f
 (define (fold template tree)
   (advance tree template null))
 
-; may return false
-; otherwise returns the whole node
-(define (subtree-at-path tree path)
-  1)
 
-(define (span-prune tree span)
-  ; remove any nodes at the top level with too low of a span
-  1)
-
-(define (depth-prune tree depth)
-  ; remove any nodes at the top level with too low of a depth
-  1)
-
-(define (child-intersect trees)
-  ; find the intersect of the children of the trees
-  1)
-
-(define (diagonal-prune tree diagonal)
-  1)
 
 (define (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule))
@@ -148,36 +159,8 @@
   (define depths (array-map (λ (is) (subtract-each (vector->list is) dims)) indices))
   (pack-arr depths))
 
-(define (dims->paths dims)
-  ; make an index array
-  ; map over the index array and for each index, make a range along each axis to the current location. Have a list of list in each cell
-  ; map over the index array and convert each index into its packed order index
-  ; pack the array into a flat list
-  ; check to make sure this produces something that is always backward looking. It should be if the packing logic is good
-  1)
-
-(define (dims->diagonals dims)
-  ; make an index array
-  ; map over the index array and for each index sum them up
-  ; find the indices that have matching answers for the above
-  ; make an array with those indices that refer to other parts in the array
-  ; filter out self-references
-  ; map the array into its packed order indices
-  ; pack the array into a list
-  ; check to make sure this is always backward looking
-  1)
-
-; todo call top level search which exists already
-
 (define (transpose xss)
   (apply map list xss))
-
-; todo make tests with these as setups to drive out accesors to trees. If the trees are not well formed the accessors will fail
-
-;(add-phrase (list "a" "b" "c" "d") (make-tree))
-;(add-phrase (list "a" "b" "e" "f") (add-phrase (list "a" "b" "c" "d") (make-tree)))
-;(add-phrase-to-tree (list "a" "b" "c" "d" "a" "c" "b" "d") (make-tree))
-;(corpus->tree "a b. c d! e f? g h a c b d")
 
 (define (sum-then-each< vec1 vec2)
   (define l1 (vector->list vec1))
@@ -222,6 +205,32 @@
   (define arr (dims->index-arr dims))
   (array-map (λ (i) (point-span i dims)) arr))
 
+(define (create-paths-matrix dims)
+  (array-map (λ (point) (map (λ (a) (map (λ (x) (list-update (vector->list point) a (λ (_) x))) (range (list-ref (vector->list point) a)))) (range (length (vector->list point)))))
+           (indexes-array (list->vector dims))))
+
+(define (translate l dims)
+  (define arr (dims->index-arr dims))
+  (define pos-order (sort (array->list arr) sum-then-each<))
+  (define flatten-hash (make-hash (map cons (range (length pos-order)) pos-order)))
+  (hash-ref flatten-hash l))
+  
+(define (translate-arr paths)
+  (array-map (λ (point) (map (λ (axis) (map (λ (location) (translate location (vector->list (array-shape paths)))) axis)) point)) paths))
+
+(define (dims->paths dims)
+  (pack-arr (translate-arr (create-paths-matrix dims))))
+
+(define (find-friends point grouped)
+  (remove point (findf (λ (l) (member point l)) grouped)))
+
+(define (make-diagonals dims)
+  (define grouped (group-by (λ (x) (sum (vector->list x))) (array->list (indexes-array (list->vector dims)))))
+  (array-map (λ (point) (find-friends point grouped)) (indexes-array (list->vector dims))))
+
+(define (dims->diagonals dims)
+  (pack-arr (translate-arr (make-diagonals dims))))
+
 (module+ test
   (require rackunit)
   (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
@@ -234,24 +243,3 @@
   (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0))
   (check-equal? (dims->depths '(3 3 3 ))
 '(2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 0)))
-
-;
-;(define (create-paths-matrix dims) ; create a matrix with paths to each location in it (indices are ND)
-;  (array-map (λ (point) (map (λ (a) (map (λ (x) (list-update (vector->list point) a (λ (_) x))) (range (list-ref (vector->list point) a)))) (range (length (vector->list point)))))
-;           (indexes-array (list->vector dims))))
-;(define (translate l) ; replace this with the function that takes an array coord and returns a vector coord
-;  (map add1 l))
-;(define (translate-arr paths) ; use this to change references to places in the flattened array
-;  (array-map (λ (point) (map (λ (axis) (map (λ (location) (translate location)) axis)) point)) paths))
-;(define (dims->paths dims) ; this is the final thingy
-;  (unravel (translate-arr (create-paths-matrix dims))))
-;(define unravel 1) ; make this the function that actually flattens a matrix in order
-;(define (find-friends point grouped)
-;  (remove point (findf (λ (l) (member point l)) grouped)))
-;(define (make-diagonals dims)
-;  (define grouped (group-by (λ (x) (sum (vector->list x))) (array->list (indexes-array (list->vector dims)))))
-;  (array-map (λ (point) (find-friends point grouped)) (indexes-array (list->vector dims))))
-;(define (dims->diagonals dims) ; this is the other final thingy
-;  (unravel (translate-arr (make-diagonals dims))))
-                
-                          
