@@ -64,13 +64,15 @@
     (add-phrase-to-tree p acc)))
 
 (define (subtree-at-path tree path)
-  (cond ([empty? path] tree)
-        ([not (member (car path) (children-names tree))] #f)
-        (subtree-at-path (node-at-name tree (car path)) (cdr path))))
+  (cond
+    [[empty? path] tree]
+    [[not (member (car path) (children-names tree))] #f]
+    [subtree-at-path
+     (node-at-name tree (car path))
+     (cdr path)]))
 
 (define (node-at-name tree name)
-  (for/first ([c (node-children tree)]
-              #:when (eq? name (node-name c)))
+  (for/first ([c (node-children tree)] #:when (eq? name (node-name c)))
     c))
 
 (define (span-prune tree span)
@@ -87,13 +89,14 @@
 
 (define (diagonal-prune tree diagonal)
   (node (node-name tree)
-        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set n))))) (node-children tree))
+        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set n)))))
+                (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
 (define (children-names tree)
   (map node-name (node-children tree)))
-  
+
 (define (child-intersect trees)
   (set->list (set-intersect (map children-names trees))))
 
@@ -104,8 +107,6 @@
 
 (define (fold template tree)
   (advance tree template null))
-
-
 
 (define (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule))
@@ -137,7 +138,6 @@
                                   (advance tree template (append results (list new-word))))
                                 valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
-
 
 (struct rules (span depth paths diagonal))
 
@@ -206,17 +206,25 @@
   (array-map (λ (i) (point-span i dims)) arr))
 
 (define (create-paths-matrix dims)
-  (array-map (λ (point) (map (λ (a) (map (λ (x) (list-update (vector->list point) a (λ (_) x))) (range (list-ref (vector->list point) a)))) (range (length (vector->list point)))))
-           (indexes-array (list->vector dims))))
+  (array-map (λ (point)
+               (map (λ (a)
+                      (map (λ (x) (list-update (vector->list point) a (λ (_) x)))
+                           (range (list-ref (vector->list point) a))))
+                    (range (length (vector->list point)))))
+             (indexes-array (list->vector dims))))
 
 (define (translate l dims)
   (define arr (dims->index-arr dims))
   (define pos-order (sort (array->list arr) sum-then-each<))
   (define flatten-hash (make-hash (map cons (range (length pos-order)) pos-order)))
   (hash-ref flatten-hash l))
-  
+
 (define (translate-arr paths)
-  (array-map (λ (point) (map (λ (axis) (map (λ (location) (translate location (vector->list (array-shape paths)))) axis)) point)) paths))
+  (array-map
+   (λ (point)
+     (map (λ (axis) (map (λ (location) (translate location (vector->list (array-shape paths)))) axis))
+          point))
+   paths))
 
 (define (dims->paths dims)
   (pack-arr (translate-arr (create-paths-matrix dims))))
@@ -225,7 +233,8 @@
   (remove point (findf (λ (l) (member point l)) grouped)))
 
 (define (make-diagonals dims)
-  (define grouped (group-by (λ (x) (sum (vector->list x))) (array->list (indexes-array (list->vector dims)))))
+  (define grouped
+    (group-by (λ (x) (sum (vector->list x))) (array->list (indexes-array (list->vector dims)))))
   (array-map (λ (point) (find-friends point grouped)) (indexes-array (list->vector dims))))
 
 (define (dims->diagonals dims)
@@ -236,10 +245,10 @@
   (check-true (name-exists? (node-children (add-phrase (list "example") (make-tree))) "example"))
   (check-false (name-exists? (node-children (add-phrase (list "example") (make-tree))) "not example"))
   (check-equal? (suffixes (list 1 2 3)) '((1 2 3) (2 3) (3)))
-  (check-equal? (pack-arr (array #[#[0 1 2] #[3 4 5]]))
-                '(0 3 1 4 2 5))
+  (check-equal? (pack-arr (array #[#[0 1 2] #[3 4 5]])) '(0 3 1 4 2 5))
   (check-equal? (dims->span-arr '(3 3 3))
-                (array #[#[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[3 3 2] #[3 3 2] #[2 2 1]] #[#[2 2 1] #[2 2 1] #[1 1 0]]]))
+                (array #[#[#[3 3 2] #[3 3 2] #[2 2 1]]
+                         #[#[3 3 2] #[3 3 2] #[2 2 1]]
+                         #[#[2 2 1] #[2 2 1] #[1 1 0]]]))
   (check-equal? (dims->spans '(3 3 3)) '(3 3 3 3 2 3 2 3 3 2 2 2 2 3 2 2 2 1 2 2 1 2 1 1 1 1 0))
-  (check-equal? (dims->depths '(3 3 3 ))
-'(2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 0)))
+  (check-equal? (dims->depths '(3 3 3)) '(2 2 2 2 2 2 2 2 2 2 2 2 2 1 2 2 2 2 1 1 2 1 2 1 1 1 0)))
