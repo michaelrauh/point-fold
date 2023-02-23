@@ -69,37 +69,49 @@
   (if (empty? phrase)
       tree
       (let ([word-to-add (car phrase)])
-        (if (name-exists? (node-children tree) word-to-add)
+        (if (name-exists? tree word-to-add)
             (let ([updated-children (set-add (remove-by-name (node-children tree) word-to-add)
                                              (add-phrase (cdr phrase)
-                                                         (select-node-by-name (node-children tree)
+                                                         (select-node-by-name-or-default-to-leaf (node-children tree)
                                                                               word-to-add)))])
               (node (node-name tree)
                     updated-children
                     (node-span tree)
-                    (add1 (get-max-depth updated-children))))
+                    (add1 (get-max-child-depth updated-children))))
             (let ([updated-children (set-add (node-children tree)
                                              (add-phrase (cdr phrase) (make-leaf word-to-add)))])
               (node (node-name tree)
                     updated-children
                     (add1 (node-span tree))
-                    (add1 (get-max-depth updated-children))))))))
+                    (add1 (get-max-child-depth updated-children))))))))
 
 (define (make-leaf name)
   (node name (set) 0 0))
 
-(define (get-max-depth nodes)
-  (apply max (set-map nodes (λ (n) (node-depth n)))))
+(define (get-max-child-depth children)
+  (apply max (cons 0 (set-map children node-depth))))
 
 (define (name-exists? tree name)
-  (not (false? (select-node-by-name tree name))))
+  (member name (children-names tree)))
 
 (define (select-node-by-name tree name)
   (for/first ([n (set->stream tree)] #:when (eq? (node-name n) name))
     n))
 
+(define (select-node-by-name-or-default-to-leaf tree name)
+  (define node (select-node-by-name tree name))
+  (if node
+      node
+      (make-leaf name)))
+
 (module+ test
   (require rackunit)
-  (check-equal? (children-names (corpus->tree "a b. a c. b d")) '("a" "b" "d")))
+  (check-equal? (node-depth (make-tree)) 0)
+  (check-equal? (node-depth (corpus->tree "a")) 1)
+  (check-equal? (node-depth (corpus->tree "a. b.")) 1)
+  (check-equal? (node-depth (corpus->tree "a b. b.")) 2)
+  (check-equal? (node-depth (corpus->tree "a b c. a b. a")) 3)
+  (check-equal? (children-names (corpus->tree "a b. a.")) (list "a" "b"))
+  )
 
 ; subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune
