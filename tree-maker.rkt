@@ -6,25 +6,24 @@
 
 (define (span-prune tree span)
   (node (node-name tree)
-        (filter (λ (n) (> span (node-span n))) (node-children tree))
+        (list->set (filter (λ (n) (> span (node-span n))) (set->list (node-children tree))))
         (node-span tree)
         (node-depth tree)))
 
 (define (depth-prune tree depth)
   (node (node-name tree)
-        (filter (λ (n) (> depth (node-depth n))) (node-children tree))
+        (list->set (filter (λ (n) (> depth (node-depth n))) (set->list (node-children tree))))
         (node-span tree)
         (node-depth tree)))
 
 (define (diagonal-prune tree diagonal)
   (node (node-name tree)
-        (filter (λ (n) (not (empty? (set-intersect (list->set diagonal) (list->set n)))))
-                (node-children tree))
+        (list->set (filter (λ (n) (not (member (node-name n) diagonal string=?))) (set->list (node-children tree))))
         (node-span tree)
         (node-depth tree)))
 
 (define (child-intersect trees)
-  (set->list (set-intersect (map children-names trees))))
+  (set->list (apply set-intersect (map children-names trees))))
 
 (define (children-names tree)
   (set-map (node-children tree) node-name))
@@ -32,17 +31,17 @@
 (define (subtree-at-path tree path)
   (cond
     [[empty? path] tree]
-    [[not (set-member? (children-names tree) (car path))] #f]
-    [subtree-at-path
+    [[not (name-exists? tree (car path))] #f]
+    [else (subtree-at-path
      (node-at-name tree (car path))
-     (cdr path)]))
+     (cdr path))]))
 
 (define (node-at-name tree name)
-  (for/first ([c (node-children tree)] #:when (eq? name (node-name c)))
+  (for/first ([c (node-children tree)] #:when (string=? name (node-name c)))
     c))
 
 (define (remove-by-name nodes name)
-  (for/set ([n (set->stream nodes)] #:when (not (eq? (node-name n) name))) n))
+  (list->set (remove name (set->list nodes) (λ (x y) (string=? (node-name y) x)))))
 
 (define (corpus->tree corpus)
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
@@ -95,7 +94,7 @@
   (member name (children-names tree)))
 
 (define (select-node-by-name tree name)
-  (for/first ([n (set->stream tree)] #:when (eq? (node-name n) name))
+  (for/first ([n (set->stream tree)] #:when (string=? (node-name n) name))
     n))
 
 (define (select-node-by-name-or-default-to-leaf tree name)
@@ -111,7 +110,19 @@
   (check-equal? (node-depth (corpus->tree "a. b.")) 1)
   (check-equal? (node-depth (corpus->tree "a b. b.")) 2)
   (check-equal? (node-depth (corpus->tree "a b c. a b. a")) 3)
+  (check-equal? (node-span (make-tree)) 0)
+  (check-equal? (node-span (corpus->tree "a")) 1)
+  (check-equal? (node-span (corpus->tree "a. b.")) 2)
+  (check-equal? (node-span (corpus->tree "a b. b.")) 2)
+  (check-equal? (node-span (corpus->tree "a b c. a b. a")) 3)
+  (check-equal? (node-span (corpus->tree "a. b. c.")) 3)
+  (check-equal? (node-span (corpus->tree "a b. a c. a d.")) 4)
   (check-equal? (children-names (corpus->tree "a b. a.")) (list "a" "b"))
-  )
-
-; subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune
+  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") null)) 'root)
+  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a"))) "a")
+  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a" "b"))) "b")
+  (check-equal? (node-name (node-at-name (corpus->tree "a b") "a")) "a")
+  (check-equal? (child-intersect (list (corpus->tree "a b. d e") (corpus->tree "a c. g h"))) '("a"))
+  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("b" "e"))
+  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("b" "e"))
+  (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '("a" "d"))) '("b" "e")))
