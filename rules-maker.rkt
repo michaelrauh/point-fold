@@ -87,8 +87,8 @@
 (define (translate l dims)
   (define arr (dims->index-arr dims))
   (define pos-order (sort (array->list arr) sum-then-each<))
-  (define flatten-hash (make-hash (map cons (range (length pos-order)) pos-order)))
-  (hash-ref flatten-hash l))
+  (define flatten-hash (make-hash (map cons pos-order (range (length pos-order)))))
+  (hash-ref flatten-hash (list->vector l)))
 
 (define (find-friends point grouped)
   (remove point (findf (λ (l) (member point l)) grouped)))
@@ -112,5 +112,6 @@
   ;(check-equal? (dims->template '(2 2)) 1)
   (check-equal? (dims->spans '(2 3 4)) '(3 2 3 3 2 2 2 3 3 1 2 2 2 3 2 1 2 2 1 2 1 1 1 0))
   (check-equal? (dims->depths '(2 3 4)) '(3 3 3 2 3 3 2 2 2 3 2 2 2 1 2 2 1 1 2 1 1 1 1 0))
+  (check-equal? (dims->paths '(2 2)) '((() ()) ((0) ()) (() (0)) ((2) (1))))
   )
 
