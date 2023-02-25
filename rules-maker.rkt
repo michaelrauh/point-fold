@@ -2,7 +2,9 @@
 
 (require math/array)
 (require math)
+
 (provide dims->template (struct-out rules))
+(require racket/trace)
 
 (struct rules (span depth paths diagonal))
 
@@ -107,5 +109,8 @@
 
 (module+ test
   (require rackunit)
-  (check-equal? (dims->template '(2 2)) 1)
+  ;(check-equal? (dims->template '(2 2)) 1)
+  (check-equal? (dims->spans '(2 3 4)) '(3 2 3 3 2 2 2 3 3 1 2 2 2 3 2 1 2 2 1 2 1 1 1 0))
+  (check-equal? (dims->depths '(2 3 4)) '(3 3 3 2 3 3 2 2 2 3 2 2 2 1 2 2 1 1 2 1 1 1 1 0))
   )
+
