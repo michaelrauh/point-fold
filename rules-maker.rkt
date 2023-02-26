@@ -27,7 +27,7 @@
   (pack-arr (translate-arr (create-paths-matrix dims))))
 
 (define (dims->diagonals dims)
-  (pack-arr (translate-arr (make-diagonals dims))))
+  (pack-arr (other-translate-arr (make-diagonals dims))))
 
 (define (transpose xss)
   (apply map list xss))
@@ -56,6 +56,14 @@
           point))
    paths))
 
+(define (other-translate-arr paths)
+  (define dims (vector->list (array-shape paths)))
+  (array-map
+   (λ (point)
+     (map (λ (axis) (translate (vector->list axis) dims))
+          point))
+   paths))
+
 (define (create-paths-matrix dims)
   (array-map (λ (point)
                (map (λ (a)
@@ -65,9 +73,13 @@
              (indexes-array (list->vector dims))))
 
 (define (make-diagonals dims)
+  (define grouped (make-group dims))
+  (array-map (λ (point) (find-friends point grouped)) (indexes-array (list->vector dims))))
+
+(define (make-group dims)
   (define grouped
     (group-by (λ (x) (sum (vector->list x))) (array->list (indexes-array (list->vector dims)))))
-  (array-map (λ (point) (find-friends point grouped)) (indexes-array (list->vector dims))))
+  grouped)
 
 (define (make-unravel-corr dims)
   (define arr (dims->index-arr dims))
@@ -106,6 +118,8 @@
     [(< (car l1) (car l2)) #t]
     [(< (car l2) (car l1)) #f]
     [else (vec< (cdr l1) (cdr l2))]))
+
+(dims->diagonals '(3 3)) ; todo eliminate lookahead
 
 (module+ test
   (require rackunit)
