@@ -27,7 +27,10 @@
   (pack-arr (translate-arr (create-paths-matrix dims))))
 
 (define (dims->diagonals dims)
-  (pack-arr (other-translate-arr (make-diagonals dims))))
+  (define over (pack-arr (other-translate-arr (make-diagonals dims))))
+  (for/list ([indices over]
+             [index (range (length over))])
+    (filter (λ (i) (< i index)) indices)))
 
 (define (transpose xss)
   (apply map list xss))
@@ -119,13 +122,12 @@
     [(< (car l2) (car l1)) #f]
     [else (vec< (cdr l1) (cdr l2))]))
 
-(dims->diagonals '(3 3)) ; todo eliminate lookahead
-
 (module+ test
   (require rackunit)
   ;(check-equal? (dims->template '(2 2)) 1)
   (check-equal? (dims->spans '(2 3 4)) '(3 2 3 3 2 2 2 3 3 1 2 2 2 3 2 1 2 2 1 2 1 1 1 0))
   (check-equal? (dims->depths '(2 3 4)) '(3 3 3 2 3 3 2 2 2 3 2 2 2 1 2 2 1 1 2 1 1 1 1 0))
   (check-equal? (dims->paths '(2 2)) '((() ()) ((0) ()) (() (0)) ((2) (1))))
+  (check-equal? (dims->diagonals '(3 3)) '(() () (1) () (3) (4 3) () (6) ()))
   )
 
