@@ -3,17 +3,19 @@
 (require math/array)
 (require math)
 
-(provide dims->template (struct-out rules))
+(provide dims->template
+         (struct-out rules))
 (require racket/trace)
 
-(struct rules (span depth paths diagonal))
+(struct rules (span depth paths diagonal) #:transparent)
 
 (define (dims->template dims)
   (define spans (dims->spans dims))
   (define depths (dims->depths dims))
   (define paths (dims->paths dims))
   (define diagonals (dims->diagonals dims))
-  (transpose (list spans depths paths diagonals)))
+  (map (λ (x) (apply rules x))
+       (transpose (list spans depths paths diagonals))))
 
 (define (dims->spans dims)
   (pack-arr (dims->span-arr dims)))
@@ -28,8 +30,7 @@
 
 (define (dims->diagonals dims)
   (define over (pack-arr (other-translate-arr (make-diagonals dims))))
-  (for/list ([indices over]
-             [index (range (length over))])
+  (for/list ([indices over] [index (range (length over))])
     (filter (λ (i) (< i index)) indices)))
 
 (define (transpose xss)
@@ -61,11 +62,7 @@
 
 (define (other-translate-arr paths)
   (define dims (vector->list (array-shape paths)))
-  (array-map
-   (λ (point)
-     (map (λ (axis) (translate (vector->list axis) dims))
-          point))
-   paths))
+  (array-map (λ (point) (map (λ (axis) (translate (vector->list axis) dims)) point)) paths))
 
 (define (create-paths-matrix dims)
   (array-map (λ (point)
@@ -124,10 +121,12 @@
 
 (module+ test
   (require rackunit)
-  ;(check-equal? (dims->template '(2 2)) 1)
+  (check-equal? (dims->template '(2 2))
+                (list (rules 2 1 '(() ()) '())
+                      (rules 1 1 '((0) ()) '())
+                      (rules 1 1 '(() (0)) '(1))
+                      (rules 0 0 '((2) (1)) '())))
   (check-equal? (dims->spans '(2 3 4)) '(3 2 3 3 2 2 2 3 3 1 2 2 2 3 2 1 2 2 1 2 1 1 1 0))
   (check-equal? (dims->depths '(2 3 4)) '(3 3 3 2 3 3 2 2 2 3 2 2 2 1 2 2 1 1 2 1 1 1 1 0))
   (check-equal? (dims->paths '(2 2)) '((() ()) ((0) ()) (() (0)) ((2) (1))))
-  (check-equal? (dims->diagonals '(3 3)) '(() () (1) () (3) (4 3) () (6) ()))
-  )
-
+  (check-equal? (dims->diagonals '(3 3)) '(() () (1) () (3) (4 3) () (6) ())))

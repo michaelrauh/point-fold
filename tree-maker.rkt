@@ -6,13 +6,13 @@
 
 (define (span-prune tree span)
   (node (node-name tree)
-        (list->set (filter (λ (n) (> span (node-span n))) (set->list (node-children tree))))
+        (list->set (filter (λ (n) (<= span (node-span n))) (set->list (node-children tree))))
         (node-span tree)
         (node-depth tree)))
 
 (define (depth-prune tree depth)
   (node (node-name tree)
-        (list->set (filter (λ (n) (> depth (node-depth n))) (set->list (node-children tree))))
+        (list->set (filter (λ (n) (<= depth (node-depth n))) (set->list (node-children tree))))
         (node-span tree)
         (node-depth tree)))
 
@@ -123,6 +123,6 @@
   (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a" "b"))) "b")
   (check-equal? (node-name (node-at-name (corpus->tree "a b") "a")) "a")
   (check-equal? (child-intersect (list (corpus->tree "a b. d e") (corpus->tree "a c. g h"))) '("a"))
-  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("b" "e"))
-  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("b" "e"))
+  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("a" "d"))
+  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("a" "d"))
   (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '("a" "d"))) '("b" "e")))

@@ -4,6 +4,7 @@
 (require math/array)
 (require math)
 (require racket/vector)
+(require racket/trace)
 (require "tree-maker.rkt" "rules-maker.rkt")
 
 (define (search corpus dims)
@@ -15,14 +16,14 @@
   (advance tree template null))
 
 (define (run-rules tree results current-rule)
-  (define concrete-rules (resolve-links current-rule))
+  (define concrete-rules (resolve-links current-rule results))
   (define paths (rules-paths concrete-rules))
-  (define subtrees (map (λ (p) (subtree-at-path tree p)) paths))
+  (define pruned (depth-prune tree (rules-depth concrete-rules)))
+  (define dpruned (span-prune pruned (rules-span concrete-rules)))
+  (define subtrees (map (λ (p) (subtree-at-path dpruned p)) paths))
   (if (member #f subtrees)
       null
       (~> subtrees
-          (map (λ (t) (span-prune t (rules-span concrete-rules))) _)
-          (map (λ (t) (depth-prune t (rules-depth concrete-rules))) _)
           (map (λ (t) (diagonal-prune t (rules-diagonal concrete-rules))) _)
           (child-intersect _))))
 
@@ -31,8 +32,8 @@
   (define active-diagonals (map (λ (x) (list-ref results x)) (rules-diagonal current-rule)))
   (rules (rules-span current-rule) (rules-depth current-rule) active-paths active-diagonals))
 
-(define (map.map l pred)
-  (map (λ (l) (map (λ (x) (pred x)))) l))
+(define (map.map pred l)
+  (map (λ (x) (map pred x)) l))
 
 (define (advance tree template results)
   (if (eq? (length template) (length results))
@@ -44,3 +45,7 @@
                                   (advance tree template (append results (list new-word))))
                                 valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
+
+(module+ test
+  (require rackunit)
+  (check-equal? (search "a b. c d. a c. b d" '(2 2)) '("a" "c" "b" "d")))
