@@ -6,6 +6,7 @@
 (require racket/vector)
 (require racket/trace)
 (require "tree-maker.rkt" "rules-maker.rkt")
+(provide search)
 
 (define (search corpus dims)
   (define template (dims->template dims))
