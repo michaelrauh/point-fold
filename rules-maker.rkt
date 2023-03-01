@@ -7,7 +7,7 @@
          (struct-out rules))
 (require racket/trace)
 
-(struct rules (span depth paths diagonal) #:transparent)
+(struct rules (span depth paths diagonal))
 
 (define (dims->template dims)
   (define spans (dims->spans dims))

@@ -66,3 +66,8 @@
   (check-equal? (find-next-dims '(4 4 2) #t 1) '((4 4 3) 2))
   (check-equal? (find-next-dims '(4 4 3) #f 2) '((2 2 2 2) 0))
   )
+
+(define (run)
+  (metasearch (file->string "example.txt")))
+
+(run)

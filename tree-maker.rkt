@@ -1,7 +1,7 @@
 #lang racket
 
 (provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune)
-(struct node (name children span depth) #:transparent)
+(struct node (name children span depth))
 (require racket/trace)
 
 (define (span-prune tree span)
