@@ -11,7 +11,8 @@
 (define (search corpus dims)
   (define template (dims->template dims))
   (define tree (corpus->tree corpus))
-  (fold template tree))
+  (define results (fold template tree))
+  results)
 
 (define (fold template tree)
   (advance tree template null))

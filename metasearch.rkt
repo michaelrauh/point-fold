@@ -1,5 +1,5 @@
 #lang racket
-(require "search.rkt")
+(require "search.rkt" "rules-maker.rkt")
 (require racket/trace)
 (require profile)
 
@@ -7,9 +7,10 @@
   (meta-cur corpus '(2 2) 0))
 
 (define (meta-cur corpus dims pos)
-  (define result (search corpus dims))
-  (displayln (list dims result))
+  (define result (time (search corpus dims)))
+  (displayln (pretty-print dims result))
   (define dims-and-pos (find-next-dims dims (not (false? result)) pos))
+  (displayln dims-and-pos)
   (if (false? dims-and-pos)
       #f
       (letrec
@@ -72,4 +73,4 @@
 (define (run)
   (metasearch (file->string "example.txt")))
 
-(profile (run))
+(run)

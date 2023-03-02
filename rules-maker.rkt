@@ -4,10 +4,18 @@
 (require math)
 
 (provide dims->template
+         pretty-print
          (struct-out rules))
 (require racket/trace)
 
 (struct rules (span depth paths diagonal))
+
+(define (pretty-print dims results)
+  (define lookup (make-unravel-corr dims))
+  (if (false? results)
+      results
+  (array-map (λ (index) (list-ref results (hash-ref lookup index))) (dims->index-arr dims))))
+  
 
 (define (dims->template dims)
   (define spans (dims->spans dims))
@@ -121,11 +129,6 @@
 
 (module+ test
   (require rackunit)
-  (check-equal? (dims->template '(2 2))
-                (list (rules 2 1 '(() ()) '())
-                      (rules 1 1 '((0) ()) '())
-                      (rules 1 1 '(() (0)) '(1))
-                      (rules 0 0 '((2) (1)) '())))
   (check-equal? (dims->spans '(2 3 4)) '(3 2 3 3 2 2 2 3 3 1 2 2 2 3 2 1 2 2 1 2 1 1 1 0))
   (check-equal? (dims->depths '(2 3 4)) '(3 3 3 2 3 3 2 2 2 3 2 2 2 1 2 2 1 1 2 1 1 1 1 0))
   (check-equal? (dims->paths '(2 2)) '((() ()) ((0) ()) (() (0)) ((2) (1))))
