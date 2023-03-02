@@ -1,6 +1,7 @@
 #lang racket
 (require "search.rkt")
 (require racket/trace)
+(require profile)
 
 (define (metasearch corpus)
   (meta-cur corpus '(2 2) 0))
@@ -39,19 +40,19 @@
 (define (is-at-end? dims pos)
   (= (add1 pos) (length dims)))
 
+(define (failed-three-first dims pos)
+  (and (= pos 0) (= (list-ref dims pos) 3)))
+
 (define (find-next-dims dims succeeded? pos)
     (cond [(and (is-base? dims) (not succeeded?)) #f]
           [(and (is-at-end? dims pos) (not succeeded?)) (next-base dims)]
           [(and (is-at-end? dims pos) (is-saturated? dims pos)) (next-base dims)]
           [(is-saturated? dims pos) (increment-next dims pos)]
+          [(and (not succeeded?) (failed-three-first dims pos)) (next-base dims)]
           [(not succeeded?) (increment-next-reset-cur dims pos)]
            [else (increment dims pos)]))
 
-(metasearch "a b c. d e f. h i j. a d h. b e i. c f j.")
-
-; a b c
-; d e f
-; h i j
+;(metasearch "a b c. d e f. h i j. a d h. b e i. c f j.")
 
 (module+ test
   (require rackunit)
@@ -65,9 +66,10 @@
   (check-equal? (find-next-dims '(4 4) #t 1) '((2 2 2) 0))
   (check-equal? (find-next-dims '(4 4 2) #t 1) '((4 4 3) 2))
   (check-equal? (find-next-dims '(4 4 3) #f 2) '((2 2 2 2) 0))
+  (check-equal? (find-next-dims '(3 2 2) #f 0) '((2 2 2 2) 0))
   )
 
 (define (run)
   (metasearch (file->string "example.txt")))
 
-(run)
+(profile (run))
