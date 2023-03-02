@@ -41,7 +41,7 @@
   (= (add1 pos) (length dims)))
 
 (define (failed-three-first dims pos)
-  (and (= pos 0) (= (list-ref dims pos) 3)))
+  (= (list-ref dims pos) 3))
 
 (define (find-next-dims dims succeeded? pos)
     (cond [(and (is-base? dims) (not succeeded?)) #f]
