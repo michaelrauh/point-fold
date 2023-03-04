@@ -6,6 +6,7 @@
 (require racket/vector)
 (require racket/trace)
 (require "tree-maker.rkt" "rules-maker.rkt")
+(require memo)
 (provide search)
 
 (define (search corpus dims)
@@ -17,7 +18,7 @@
 (define (fold template tree)
   (advance tree template null))
 
-(define (run-rules tree results current-rule)
+(define/memoize (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule results))
   (define paths (rules-paths concrete-rules))
   (define pruned (depth-prune tree (rules-depth concrete-rules)))
@@ -50,4 +51,4 @@
 
 (module+ test
   (require rackunit)
-  (check-equal? (search "a b. c d. a c. b d" '(2 2)) '("a" "c" "b" "d")))
+  (check-equal? (search "a b. c d. a c. b d" '(2 2)) '("a" "b" "c" "d")))

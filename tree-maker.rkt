@@ -6,24 +6,24 @@
 
 (define (span-prune tree span)
   (node (node-name tree)
-        (list->set (filter (λ (n) (<= span (node-span n))) (set->list (node-children tree))))
+        (filter (λ (n) (<= span (node-span n))) (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
 (define (depth-prune tree depth)
   (node (node-name tree)
-        (list->set (filter (λ (n) (<= depth (node-depth n))) (set->list (node-children tree))))
+        (filter (λ (n) (<= depth (node-depth n))) (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
 (define (diagonal-prune tree diagonal)
   (node (node-name tree)
-        (list->set (filter (λ (n) (not (member (node-name n) diagonal string=?))) (set->list (node-children tree))))
+        (filter (λ (n) (not (member (node-name n) diagonal string=?))) (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
 (define (child-intersect trees)
-  (set->list (apply set-intersect (map children-names trees))))
+  (apply set-intersect (map children-names trees)))
 
 (define (children-names tree)
   (set-map (node-children tree) node-name))
@@ -41,7 +41,7 @@
     c))
 
 (define (remove-by-name nodes name)
-  (list->set (remove name (set->list nodes) (λ (x y) (string=? (node-name y) x)))))
+  (remove name nodes (λ (x y) (string=? (node-name y) x))))
 
 (define (corpus->tree corpus)
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
@@ -69,26 +69,24 @@
       tree
       (let ([word-to-add (car phrase)])
         (if (name-exists? tree word-to-add)
-            (let ([updated-children (set-add (remove-by-name (node-children tree) word-to-add)
-                                             (add-phrase (cdr phrase)
+            (let ([updated-children (cons (add-phrase (cdr phrase)
                                                          (select-node-by-name-or-default-to-leaf (node-children tree)
-                                                                              word-to-add)))])
+                                                                              word-to-add)) (remove-by-name (node-children tree) word-to-add))])
               (node (node-name tree)
                     updated-children
                     (node-span tree)
                     (add1 (get-max-child-depth updated-children))))
-            (let ([updated-children (set-add (node-children tree)
-                                             (add-phrase (cdr phrase) (make-leaf word-to-add)))])
+            (let ([updated-children (cons (add-phrase (cdr phrase) (make-leaf word-to-add)) (node-children tree))])
               (node (node-name tree)
                     updated-children
                     (add1 (node-span tree))
                     (add1 (get-max-child-depth updated-children))))))))
 
 (define (make-leaf name)
-  (node name (set) 0 0))
+  (node name (list) 0 0))
 
 (define (get-max-child-depth children)
-  (apply max (cons 0 (set-map children node-depth))))
+  (apply max (cons 0 (map node-depth children))))
 
 (define (name-exists? tree name)
   (member name (children-names tree)))
@@ -123,6 +121,6 @@
   (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a" "b"))) "b")
   (check-equal? (node-name (node-at-name (corpus->tree "a b") "a")) "a")
   (check-equal? (child-intersect (list (corpus->tree "a b. d e") (corpus->tree "a c. g h"))) '("a"))
-  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("a" "d"))
-  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("a" "d"))
-  (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '("a" "d"))) '("b" "e")))
+  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("d" "a"))
+  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("d" "a"))
+  (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '("a" "d"))) '("e" "b")))
