@@ -18,11 +18,11 @@
 (define (fold template tree)
   (advance tree template null))
 
-(define/memoize (run-rules tree results current-rule)
+(define (run-rules tree results current-rule)
   (define concrete-rules (resolve-links current-rule results))
   (define paths (rules-paths concrete-rules))
-  (define pruned (depth-prune tree (rules-depth concrete-rules)))
-  (define dpruned (span-prune pruned (rules-span concrete-rules)))
+  ;(define pruned (depth-prune tree (rules-depth concrete-rules)))
+  (define dpruned (span-prune tree (rules-span concrete-rules)))
   (define subtrees (map (λ (p) (subtree-at-path dpruned p)) paths))
   (if (member #f subtrees)
       null
