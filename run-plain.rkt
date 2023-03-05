@@ -10,10 +10,12 @@
 ; dememoize running rules <- this helps slightly
 ; integer encode strings
 
+; 109 lines of text for each
 ; baseline cpu time: 8934 real time: 8765 gc time: 1273
 ; no depth pruning cpu time: 8085 real time: 7311 gc time: 1250
 ; no span pruning cpu time: 146520 real time: 146513 gc time: 31901
 ; no rules memoization: cpu time: 9145 real time: 8752 gc time: 1458
+; integer encoding cpu time: 5550 real time: 5727 gc time: 489
 
 
 ; plan:

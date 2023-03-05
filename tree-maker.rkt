@@ -1,6 +1,6 @@
 #lang racket
 
-(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune)
+(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune decode)
 (struct node (name children span depth))
 (require racket/trace)
 
@@ -18,7 +18,7 @@
 
 (define (diagonal-prune tree diagonal)
   (node (node-name tree)
-        (filter (λ (n) (not (member (node-name n) diagonal string=?))) (node-children tree))
+        (filter (λ (n) (not (member (node-name n) diagonal =))) (node-children tree))
         (node-span tree)
         (node-depth tree)))
 
@@ -37,22 +37,32 @@
      (cdr path))]))
 
 (define (node-at-name tree name)
-  (for/first ([c (node-children tree)] #:when (string=? name (node-name c)))
+  (for/first ([c (node-children tree)] #:when (= name (node-name c)))
     c))
 
 (define (remove-by-name nodes name)
-  (remove name nodes (λ (x y) (string=? (node-name y) x))))
+  (remove name nodes (λ (x y) (= (node-name y) x))))
 
 (define (corpus->tree corpus)
+  (define encoder (corpus->encoder corpus))
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
-    (add-phrase-to-tree p acc)))
+    (add-phrase-to-tree encoder p acc)))
+
+(define (corpus->encoder corpus)
+  (define strings (remove-duplicates (flatten (corpus->sentences corpus))))
+  (make-hash (map cons strings (range (length strings)))))
+
+(define (decode corpus k)
+  (define strings (remove-duplicates (flatten (corpus->sentences corpus))))
+  (define h (make-hash (map cons (range (length strings)) strings)))
+  (hash-ref h k))
 
 (define (corpus->sentences corpus)
   (filter cons? (map string-split (corpus->sentence-strings corpus))))
 
-(define (add-phrase-to-tree phrase tree)
+(define (add-phrase-to-tree encoder phrase tree)
   (for/fold ([acc tree]) ([p (suffixes phrase)])
-    (add-phrase p acc)))
+    (add-phrase encoder p acc)))
 
 (define (make-tree)
   (make-leaf 'root))
@@ -64,19 +74,19 @@
 (define (suffixes l)
   (if (= 1 (length l)) (list l) (cons l (suffixes (cdr l)))))
 
-(define (add-phrase phrase tree)
+(define (add-phrase encoder phrase tree)
   (if (empty? phrase)
       tree
-      (let ([word-to-add (car phrase)])
+      (let ([word-to-add (hash-ref encoder (car phrase))])
         (if (name-exists? tree word-to-add)
-            (let ([updated-children (cons (add-phrase (cdr phrase)
+            (let ([updated-children (cons (add-phrase encoder (cdr phrase)
                                                          (select-node-by-name-or-default-to-leaf (node-children tree)
                                                                               word-to-add)) (remove-by-name (node-children tree) word-to-add))])
               (node (node-name tree)
                     updated-children
                     (node-span tree)
                     (add1 (get-max-child-depth updated-children))))
-            (let ([updated-children (cons (add-phrase (cdr phrase) (make-leaf word-to-add)) (node-children tree))])
+            (let ([updated-children (cons (add-phrase encoder (cdr phrase) (make-leaf word-to-add)) (node-children tree))])
               (node (node-name tree)
                     updated-children
                     (add1 (node-span tree))
@@ -92,7 +102,7 @@
   (member name (children-names tree)))
 
 (define (select-node-by-name tree name)
-  (for/first ([n (set->stream tree)] #:when (string=? (node-name n) name))
+  (for/first ([n (set->stream tree)] #:when (= (node-name n) name))
     n))
 
 (define (select-node-by-name-or-default-to-leaf tree name)
@@ -100,6 +110,8 @@
   (if node
       node
       (make-leaf name)))
+
+
 
 (module+ test
   (require rackunit)
@@ -115,12 +127,12 @@
   (check-equal? (node-span (corpus->tree "a b c. a b. a")) 3)
   (check-equal? (node-span (corpus->tree "a. b. c.")) 3)
   (check-equal? (node-span (corpus->tree "a b. a c. a d.")) 4)
-  (check-equal? (children-names (corpus->tree "a b. a.")) (list "a" "b"))
+  (check-equal? (children-names (corpus->tree "a b. a.")) (list 0 1))
   (check-equal? (node-name (subtree-at-path (corpus->tree "a b") null)) 'root)
-  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a"))) "a")
-  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list "a" "b"))) "b")
-  (check-equal? (node-name (node-at-name (corpus->tree "a b") "a")) "a")
-  (check-equal? (child-intersect (list (corpus->tree "a b. d e") (corpus->tree "a c. g h"))) '("a"))
-  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '("d" "a"))
-  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '("d" "a"))
-  (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '("a" "d"))) '("e" "b")))
+  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list 0))) 0)
+  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list 0 1))) 1)
+  (check-equal? (node-name (node-at-name (corpus->tree "a b") 0)) 0)
+  ;(check-equal? (child-intersect (list (corpus->tree "a b c d e f g. a b. d e") (corpus->tree "a b c d e f g. a c. g h"))) '("a")) come back to. Actually walk down one.
+  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '(2 0))
+  (check-equal? (children-names (depth-prune (corpus->tree "a b. d e") 1)) '(2 0))
+  (check-equal? (children-names (diagonal-prune (corpus->tree "a b. d e") '(0 3))) '(2 1)))

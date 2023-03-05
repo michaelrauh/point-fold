@@ -7,7 +7,7 @@
 
 (define (meta-cur corpus dims pos)
   (define result (time (search corpus dims)))
-  (displayln (pretty-print dims result))
+  (displayln (pretty-print corpus dims result))
   (define dims-and-pos (find-next-dims dims (not (false? result)) pos))
   (displayln dims-and-pos)
   (if (false? dims-and-pos)

@@ -2,6 +2,7 @@
 
 (require math/array)
 (require math)
+(require "tree-maker.rkt")
 
 (provide dims->template
          pretty-print
@@ -10,11 +11,11 @@
 
 (struct rules (span depth paths diagonal))
 
-(define (pretty-print dims results)
+(define (pretty-print corpus dims results)
   (define lookup (make-unravel-corr dims))
   (if (false? results)
       results
-  (array-map (λ (index) (list-ref results (hash-ref lookup index))) (dims->index-arr dims))))
+  (array-map (λ (k) (decode corpus k)) (array-map (λ (index) (list-ref results (hash-ref lookup index))) (dims->index-arr dims)))))
   
 
 (define (dims->template dims)
