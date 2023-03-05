@@ -1,14 +1,7 @@
 #lang racket
 (require "search.rkt" "rules-maker.rkt")
 (require racket/trace)
-
-;(require profile-flame-graph)
-
-;(require profile)
-;(require profile/sampler)
-;(require profile/analyzer)
-;(require profile/render-graphviz)
-
+(provide run)
 (define (metasearch corpus)
   (meta-cur corpus '(2 2) 0))
 
@@ -78,16 +71,3 @@
 
 (define (run)
   (metasearch (file->string "example.txt")))
-
-; graphviz
-;(define sampler (create-sampler (current-thread) 0.005))
-;(run)
-;(render (analyze-samples (sampler 'get-snapshots)))
-
-; flamegraph
-;(profile (run)
-;         #:svg-path "my-profile.svg"
-;         #:preview? #t
-;         #:delay .0001)
-
-(run)
