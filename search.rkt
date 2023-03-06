@@ -12,13 +12,14 @@
 (define (search corpus dims)
   (define template (dims->template dims))
   (define tree (corpus->tree corpus))
-  (define results (fold template tree))
+  (define vs (vocab-size corpus))
+  (define results (fold vs template tree))
   results)
 
-(define (fold template tree)
-  (advance tree template null))
+(define (fold vocab-size template tree)
+  (advance vocab-size tree template null))
 
-(define (run-rules tree results current-rule)
+(define (run-rules vocab-size tree results current-rule)
   (define concrete-rules (resolve-links current-rule results))
   (define paths (rules-paths concrete-rules))
   ;(define pruned (depth-prune tree (rules-depth concrete-rules)))
@@ -28,7 +29,7 @@
       null
       (~> subtrees
           (map (λ (t) (diagonal-prune t (rules-diagonal concrete-rules))) _)
-          (child-intersect _))))
+          (child-intersect vocab-size _))))
 
 (define (resolve-links current-rule results)
   (define active-paths (map.map (λ (x) (list-ref results x)) (rules-paths current-rule)))
@@ -38,14 +39,14 @@
 (define (map.map pred l)
   (map (λ (x) (map pred x)) l))
 
-(define (advance tree template results)
+(define (advance vocab-size tree template results)
   (if (eq? (length template) (length results))
       results
-      (let ([valid-words-to-fill-in (run-rules tree results (list-ref template (length results)))])
+      (let ([valid-words-to-fill-in (run-rules vocab-size tree results (list-ref template (length results)))])
         (if (empty? valid-words-to-fill-in)
             #f
             (let ([rec-res (map (λ (new-word)
-                                  (advance tree template (append results (list new-word))))
+                                  (advance vocab-size tree template (append results (list new-word))))
                                 valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
 

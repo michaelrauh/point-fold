@@ -8,7 +8,7 @@
 ; combine pruning and finding subtree at path into one
 ; use a tally vector instead of a set intersect over lists
 ; dememoize running rules <- this helps slightly
-; integer encode strings
+; integer encode strings <- this helps
 
 ; 109 lines of text for each
 ; baseline cpu time: 8934 real time: 8765 gc time: 1273
@@ -16,8 +16,8 @@
 ; no span pruning cpu time: 146520 real time: 146513 gc time: 31901
 ; no rules memoization: cpu time: 9145 real time: 8752 gc time: 1458
 ; integer encoding cpu time: 5550 real time: 5727 gc time: 489
+; tally vector cpu time: 5529 real time: 5678 gc time: 854
 
 
 ; plan:
-; integer encode strings
 ; use a tally vector

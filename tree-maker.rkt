@@ -1,6 +1,6 @@
 #lang racket
 
-(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune decode)
+(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune decode vocab-size)
 (struct node (name children span depth))
 (require racket/trace)
 
@@ -22,8 +22,19 @@
         (node-span tree)
         (node-depth tree)))
 
-(define (child-intersect trees)
-  (apply set-intersect (map children-names trees)))
+(define (child-intersect vocab-size trees) ; come back here
+  (define namess (map children-names trees))
+  (define hit (length trees))
+  (define tallies (make-vector vocab-size))
+  (for ([names namess])
+    (for ([name names])
+      (vector-set! tallies name (add1 (vector-ref tallies name)))))
+
+  (for/list ([count tallies]
+             [pos (range vocab-size)]
+             #:when (= count hit))
+    pos))  
+  
 
 (define (children-names tree)
   (set-map (node-children tree) node-name))
@@ -47,6 +58,9 @@
   (define encoder (corpus->encoder corpus))
   (for/fold ([acc (make-tree)]) ([p (corpus->sentences corpus)])
     (add-phrase-to-tree encoder p acc)))
+
+(define (vocab-size corpus)
+  (hash-count (corpus->encoder corpus)))
 
 (define (corpus->encoder corpus)
   (define strings (remove-duplicates (flatten (corpus->sentences corpus))))
