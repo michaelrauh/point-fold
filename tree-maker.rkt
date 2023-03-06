@@ -22,7 +22,7 @@
         (node-span tree)
         (node-depth tree)))
 
-(define (child-intersect vocab-size trees) ; come back here
+(define (child-intersect vocab-size trees)
   (define namess (map children-names trees))
   (define hit (length trees))
   (define tallies (make-vector vocab-size))
