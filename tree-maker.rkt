@@ -1,6 +1,6 @@
 #lang racket
 
-(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect span-prune depth-prune diagonal-prune decode vocab-size)
+(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect diagonal-prune decode vocab-size)
 (struct node (name children span depth))
 (require racket/trace)
 
@@ -9,20 +9,8 @@
             ([k keys])
     (hash-remove h k)))
 
-(define (span-prune tree span)
-  (node (node-name tree)
-        (remove-keys (node-children tree) (map node-name (filter (λ (n) (> span (node-span n))) (hash-values (node-children tree)))))
-        (node-span tree)
-        (node-depth tree)))
-
-(define (depth-prune tree depth)
-  (node (node-name tree)
-        (filter (λ (n) (<= depth (node-depth n))) (node-children tree))
-        (node-span tree)
-        (node-depth tree)))
-
-(define (diagonal-prune tree diagonal)
-  (filter (λ (n) (not (member n diagonal =))) (hash-keys (node-children tree))))
+(define (diagonal-prune names diagonal)
+  (filter (λ (n) (not (member n diagonal =))) names))
 
 (define (child-intersect vocab-size trees)
   (define namess trees)
@@ -41,16 +29,20 @@
 (define (children-names tree)
   (hash-keys (node-children tree)))
 
-(define (subtree-at-path tree path)
+(define (subtree-at-path span tree path)
   (cond
-    [[false? tree] tree]
-    [[empty? path] tree]
-    [else (subtree-at-path
-     (node-at-name tree (car path))
-     (cdr path))])) 
+    [[false? tree] #f]
+    [[empty? path] (map node-name (filter (λ (n) (<= span (node-span n))) (hash-values (node-children tree))))]
+    [else (subtree-at-path span
+     (node-at-name span tree (car path))
+     (cdr path))]))
 
-(define (node-at-name tree name)
-  (hash-ref (node-children tree) name))
+(define (node-at-name span tree name)
+  (define candidate (hash-ref (node-children tree) name))
+  (cond
+    [(false? candidate) #f]
+    [(<= span (node-span candidate)) candidate]
+    [else #f]))
 
 (define (remove-by-name nodes name)
   (remove name nodes (λ (x y) (= (node-name y) x))))
@@ -140,11 +132,9 @@
   (check-equal? (node-span (corpus->tree "a. b. c.")) 3)
   (check-equal? (node-span (corpus->tree "a b. a c. a d.")) 4)
   (check-equal? (children-names (corpus->tree "a b. a.")) (list 0 1))
-  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") null)) 'root)
-  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list 0))) 0)
-  (check-equal? (node-name (subtree-at-path (corpus->tree "a b") (list 0 1))) 1)
-  (check-equal? (node-name (node-at-name (corpus->tree "a b") 0)) 0)
-;  ;(check-equal? (child-intersect (list (corpus->tree "a b c d e f g. a b. d e") (corpus->tree "a b c d e f g. a c. g h"))) '("a")) come back to. Actually walk down one.
-  (check-equal? (children-names (span-prune (corpus->tree "a b. d e") 1)) '(0 2))
+  (check-equal? (subtree-at-path 0 (corpus->tree "a b") null) '(0 1))
+  (check-equal? (subtree-at-path 0 (corpus->tree "a b") (list 0)) 0)
+  (check-equal? (subtree-at-path 0 (corpus->tree "a b") (list 0 1)) 1)
+  (check-equal? (node-at-name (corpus->tree "a b") 0) 0)
   (check-equal? (diagonal-prune (corpus->tree "a b. d e") '(0 3)) '(1 2))
 )
