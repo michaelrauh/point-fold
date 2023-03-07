@@ -71,3 +71,5 @@
 
 (define (run)
   (metasearch (file->string "example.txt")))
+
+;(run)

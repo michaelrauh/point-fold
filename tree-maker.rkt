@@ -1,16 +1,22 @@
 #lang racket
 
-(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect diagonal-prune decode vocab-size)
-(struct node (name children span depth))
+(provide corpus->tree (struct-out node) subtree-at-path children-names node-at-name child-intersect diagonal-prune decode vocab-size make-span-hash make-depth-hash)
+(struct node (name children))
 (require racket/trace)
 
-(define (remove-keys hash keys)
-  (for/fold ([h hash])
-            ([k keys])
-    (hash-remove h k)))
+(define (make-span-hash tree)
+  (make-hash (map cons (hash-keys (node-children tree)) (map (λ (n) (length (hash-keys (node-children n)))) (hash-values (node-children tree))))))
 
 (define (diagonal-prune names diagonal)
   (filter (λ (n) (not (member n diagonal =))) names))
+
+(define (make-depth-hash tree)
+  (make-hash (map cons (hash-keys (node-children tree)) (map get-depth (hash-values (node-children tree))))))
+
+(define (get-depth tree)
+  (cond
+   [(empty? (hash-keys (node-children tree))) 0]
+    [else (add1 (apply max (map get-depth (hash-values (node-children tree)))))]))
 
 (define (child-intersect vocab-size trees)
   (define namess trees)
@@ -29,20 +35,19 @@
 (define (children-names tree)
   (hash-keys (node-children tree)))
 
-(define (subtree-at-path span tree path)
+(define (subtree-at-path depth-hash span-hash depth span tree path)
   (cond
     [[false? tree] #f]
-    [[empty? path] (map node-name (filter (λ (n) (<= span (node-span n))) (hash-values (node-children tree))))]
-    [else (subtree-at-path span
+    [[empty? path] (begin
+                     (define names (hash-keys (node-children tree)))
+                     (define depth-filtered (filter (λ (n) (<= depth (hash-ref depth-hash n))) names))
+                     (filter (λ (n) (<= span (hash-ref span-hash n))) depth-filtered))]
+    [else (subtree-at-path depth-hash span-hash depth span
      (node-at-name span tree (car path))
      (cdr path))]))
 
 (define (node-at-name span tree name)
-  (define candidate (hash-ref (node-children tree) name))
-  (cond
-    [(false? candidate) #f]
-    [(<= span (node-span candidate)) candidate]
-    [else #f]))
+  (hash-ref (node-children tree) name))
 
 (define (remove-by-name nodes name)
   (remove name nodes (λ (x y) (= (node-name y) x))))
@@ -90,20 +95,13 @@
                                                          (select-node-by-name-or-default-to-leaf (node-children tree)
                                                                               word-to-add)))])
               (node (node-name tree)
-                    updated-children
-                    (node-span tree)
-                    (add1 (get-max-child-depth updated-children))))
+                    updated-children))
             (let ([updated-children (hash-set (node-children tree) word-to-add (add-phrase encoder (cdr phrase) (make-leaf word-to-add)))])
               (node (node-name tree)
-                    updated-children
-                    (add1 (node-span tree))
-                    (add1 (get-max-child-depth updated-children))))))))
+                    updated-children))))))
 
 (define (make-leaf name)
-  (node name (hash) 0 0))
-
-(define (get-max-child-depth children)
-  (apply max (cons 0 (map node-depth (hash-values children)))))
+  (node name (hash)))
 
 (define (name-exists? tree name)
   (member name (children-names tree)))
@@ -119,18 +117,6 @@
 
 (module+ test
   (require rackunit)
-  (check-equal? (node-depth (make-tree)) 0)
-  (check-equal? (node-depth (corpus->tree "a")) 1)
-  (check-equal? (node-depth (corpus->tree "a. b.")) 1)
-  (check-equal? (node-depth (corpus->tree "a b. b.")) 2)
-  (check-equal? (node-depth (corpus->tree "a b c. a b. a")) 3)
-  (check-equal? (node-span (make-tree)) 0)
-  (check-equal? (node-span (corpus->tree "a")) 1)
-  (check-equal? (node-span (corpus->tree "a. b.")) 2)
-  (check-equal? (node-span (corpus->tree "a b. b.")) 2)
-  (check-equal? (node-span (corpus->tree "a b c. a b. a")) 3)
-  (check-equal? (node-span (corpus->tree "a. b. c.")) 3)
-  (check-equal? (node-span (corpus->tree "a b. a c. a d.")) 4)
   (check-equal? (children-names (corpus->tree "a b. a.")) (list 0 1))
   (check-equal? (subtree-at-path 0 (corpus->tree "a b") null) '(0 1))
   (check-equal? (subtree-at-path 0 (corpus->tree "a b") (list 0)) 0)

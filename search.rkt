@@ -13,16 +13,18 @@
   (define template (dims->template dims))
   (define tree (corpus->tree corpus))
   (define vs (vocab-size corpus))
-  (define results (fold vs template tree))
+  (define span-hash (make-span-hash tree))
+  (define depth-hash (make-depth-hash tree))
+  (define results (fold depth-hash span-hash vs template tree))
   results)
 
-(define (fold vocab-size template tree)
-  (advance vocab-size tree template null))
+(define (fold depth-hash span-hash vocab-size template tree)
+  (advance depth-hash span-hash vocab-size tree template null))
 
-(define (run-rules vocab-size tree results current-rule)
+(define (run-rules depth-hash span-hash vocab-size tree results current-rule)
   (define concrete-rules (resolve-links current-rule results))
   (define paths (rules-paths concrete-rules))
-  (define subtrees (map (λ (p) (subtree-at-path (rules-span concrete-rules) tree p)) paths))
+  (define subtrees (map (λ (p) (subtree-at-path depth-hash span-hash (rules-depth concrete-rules) (rules-span concrete-rules) tree p)) paths))
   (if (member #f subtrees)
       null
       (~> subtrees
@@ -37,14 +39,14 @@
 (define (map.map pred l)
   (map (λ (x) (map pred x)) l))
 
-(define (advance vocab-size tree template results)
+(define (advance depth-hash span-hash vocab-size tree template results)
   (if (eq? (length template) (length results))
       results
-      (let ([valid-words-to-fill-in (run-rules vocab-size tree results (list-ref template (length results)))])
+      (let ([valid-words-to-fill-in (run-rules depth-hash span-hash vocab-size tree results (list-ref template (length results)))])
         (if (empty? valid-words-to-fill-in)
             #f
             (let ([rec-res (map (λ (new-word)
-                                  (advance vocab-size tree template (append results (list new-word))))
+                                  (advance depth-hash span-hash vocab-size tree template (append results (list new-word))))
                                 valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
 
