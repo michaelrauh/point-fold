@@ -81,7 +81,7 @@
 
 (define (corpus->sentence-strings corpus)
   (remove-duplicates
-   (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?\\;\\:")))))
+   (map string-downcase (map string-trim (string-split corpus #px"\\!|\\.|\\?|\\;|\\:")))))
 
 (define (suffixes l)
   (if (= 1 (length l)) (list l) (cons l (suffixes (cdr l)))))
