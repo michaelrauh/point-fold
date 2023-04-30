@@ -1,5 +1,6 @@
 #lang racket
 
+(require math/number-theory)
 (define (corpus->sentences corpus)
   (filter cons? (map string-split (corpus->sentence-strings corpus))))
 
@@ -45,4 +46,21 @@
 
 ; next thought
 ; all combinations of the metadata map describe the n-tuple positions that a given key may appear in. K in N choose K is dimensionality. 
-; 
+; for "the" this is a very, very large number. Naively, it is best to choose the biggest shape,
+; then to see if there are enough terms to fill every position in that shape
+; after that, a local search can be run by scoring each box filled in here based upon existing phrases and the diagonal rule
+; however, since this number is so very large, metasearch may be better to start, then see what is eligible for each position
+
+; as a second look, seeing what is filtered out when asking what can go in the bottom right 2 2 3 position as an example shows a 94% hit rate, so this saves very little too
+
+(define m (meta-example))
+;(define t (hash-ref m "the"))
+;(define n (length t))
+;(for/sum ([k (range n)]) (binomial n k))
+    
+(define winners (for/list
+    ([k (hash-keys m)]
+     #:when (subset? (list 2 2 3) (hash-ref m k)))
+  k))
+(length winners)
+(length (hash-keys m))
