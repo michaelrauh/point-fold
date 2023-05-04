@@ -1,24 +1,22 @@
 #lang racket
 (require math/array)
 
-;(define (run dims vocabulary reference)
-;  (define blank (make-blank dims))
-;  (define (go stack)
-;    (if (empty? stack)
-;        #f
-;        (if (full? (car stack))
-;            (car stack)
-;            (begin
-;              (define all-to-add (map add-at-next vocabulary))
-;              (for/fold ([acc stack])
-;                        ([to-add all-to-add]
-;                         #:when (legal? reference to-add))
-;                (cons to-add stack)))))
-;    (go acc))
-;  (go null))
+(define (run dims vocabulary reference)
+  (for/fold ([stack (list (make-blank dims))])
+            ([i (in-naturals)])
+        #:break (or (empty? stack) (full? (car stack)))
+    (begin
+      (define top (car stack))
+      (define rest (cdr stack))
+      (define all-to-add (map ((curry add-at-next) top) vocabulary))
+              (define additions (for/fold ([acc stack])
+                        ([to-add all-to-add]
+                         #:when (legal? reference to-add))
+                (cons to-add stack)))
+              (append additions rest))))
 
-;(define (run dims vocabulary reference)
-;  (do
+
+    
 
 ; this is a nice time to preallocate. Perhaps to preallocate lots of these
 (define (make-blank dims)
