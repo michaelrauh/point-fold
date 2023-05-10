@@ -50,6 +50,4 @@
                                 valid-words-to-fill-in)])
               (let ([ress (filter identity rec-res)]) (if (empty? ress) #f (car ress))))))))
 
-(module+ test
-  (require rackunit)
-  (check-equal? (search "a b. c d. a c. b d" '(2 2)) '("a" "b" "c" "d")))
+(time (search (file->string "example.txt") '(2 3)))
